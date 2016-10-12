@@ -35,6 +35,8 @@ class Server
 
         void add_to_buffer(int counter );
 
+        void end();
+
 
     private :
         boost::array<uint32_t, MAXBUFLEN> m_data_buffer;
@@ -52,6 +54,7 @@ class Server
 
         boost::circular_buffer<uint32_t> m_circular_buffer;
         boost::shared_ptr<bounded_buffer<int> > m_bounded_buffer;
+        boost::shared_ptr<queue<int> > m_queue;
 
         boost::shared_ptr<Decoder> m_decoder;
 

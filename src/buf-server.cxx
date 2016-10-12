@@ -18,6 +18,7 @@ int main()
        
     server->initialize(io);
     server->listen();
+    //server->end();
 
     return 0;
 }
