@@ -19,15 +19,16 @@ namespace ip = boost::asio::ip;
 
 #define MAXBUFLEN 65507
 
-class Server
+class Server : public boost::enable_shared_from_this<Server>
 {
     public :
         Server();
         virtual ~Server(){};
 
-        void initialize(boost::shared_ptr<boost::asio::io_service> io);
+        void initialize(boost::shared_ptr<boost::asio::io_service> io, boost::shared_ptr<bounded_buffer<int>> buf);
 
         void listen();
+        void start_gathering();
 
         void handle_data(int& count);
 
@@ -57,6 +58,7 @@ class Server
         boost::shared_ptr<queue<int> > m_queue;
 
         boost::shared_ptr<Decoder> m_decoder;
+        bool gathering_in_progress;
 
 }; // class
 

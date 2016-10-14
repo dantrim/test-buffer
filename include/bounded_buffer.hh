@@ -25,22 +25,37 @@ public:
 
   void push_front(typename boost::call_traits<value_type>::param_type item)
   { // `param_type` represents the "best" way to pass a parameter of type `value_type` to a method.
+        boost::mutex::scoped_lock lock(m_mutex);
+        m_container.push_front(item);
+        lock.unlock();
+        m_not_empty.notify_one();
 
+/*
       boost::mutex::scoped_lock lock(m_mutex);
       m_not_full.wait(lock, boost::bind(&bounded_buffer<value_type>::is_not_full, this));
       m_container.push_front(item);
       ++m_unread;
       lock.unlock();
       m_not_empty.notify_one();
+*/
   }
 
   void pop_back(value_type* pItem) {
+    boost::mutex::scoped_lock lock(m_mutex);
+    while(m_container.empty()) {
+        m_not_empty.wait(lock);
+    }
+    *pItem = m_container.back();
+    m_not_empty.notify_one();
+    
+/*
       boost::mutex::scoped_lock lock(m_mutex);
       m_not_empty.wait(lock, boost::bind(&bounded_buffer<value_type>::is_not_empty, this));
       *pItem = m_container[--m_unread];
-      m_container.pop_back();
+      //m_container.pop_back();
       lock.unlock();
       m_not_full.notify_one();
+*/
   }
   int get_capacity() {
         return m_container.capacity();
@@ -56,13 +71,18 @@ public:
     return sx.str();
     
   }
+
+    bool empty() {
+        boost::mutex::scoped_lock lock(m_mutex);
+        return m_container.empty();
+    }
   
+  bool is_not_empty() const { return m_unread > 0; }
 
 private:
   bounded_buffer(const bounded_buffer&);              // Disabled copy constructor.
   bounded_buffer& operator = (const bounded_buffer&); // Disabled assign operator.
 
-  bool is_not_empty() const { return m_unread > 0; }
   bool is_not_full() const { return m_unread < m_container.capacity(); }
 
   size_type m_unread;
