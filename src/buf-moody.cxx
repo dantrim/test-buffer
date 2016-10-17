@@ -11,6 +11,7 @@
 
 
 
+
 boost::array<uint32_t, 65507> data_buffer;
 boost::asio::ip::udp::endpoint endpoint;
 boost::shared_ptr<int> n_packet = boost::shared_ptr<int>(new int(0));
@@ -24,6 +25,7 @@ boost::shared_ptr<int> n_packet = boost::shared_ptr<int>(new int(0));
 
 #include <iostream>
 using namespace std;
+#include <sstream>
 
 using namespace moodycamel;
 boost::shared_ptr<BlockingReaderWriterQueue<int> > q = boost::shared_ptr<BlockingReaderWriterQueue<int> >(new BlockingReaderWriterQueue<int>());
@@ -99,26 +101,52 @@ void receive_data(boost::shared_ptr<boost::asio::ip::udp::socket> socket)
 }
 int main()
 {
-/*
     BlockingReaderWriterQueue<std::map<int, int> > mapping_queue(100);
     BlockingReaderWriterQueue<std::pair<int, int> > pair_queue(100);
+    BlockingReaderWriterQueue<std::pair<std::string, boost::array<uint32_t, 65507> > > boost_queue(20);
 
-    for(int i = 0; i < 50; i++)
-        pair_queue.enqueue(std::make_pair(i, 2*i));
-    //pair_queue.enqueue(std::make_pair(1,400)); 
-    for(int i = 0; i < 50; i++) {
-        std::pair<int, int> read_in;
-        bool success = pair_queue.try_dequeue(read_in);
+    stringstream ipstream;
+    for(int i = 0; i < 11; i++) {
+        ipstream << i << "." << i << "." << i << "." << i;
+        boost::array<uint32_t, 65507> testbuf;
+        for(int j = 0; j < 5; j++) {
+            testbuf.at(j) = j*i;
+        }
+        testbuf.at(5) = 4321;
+        boost_queue.enqueue(std::make_pair(ipstream.str(), testbuf));
+        ipstream.str(""); 
+        //pair_queue.enqueue(std::make_pair(i, 2*i));
+    }
+   // //pair_queue.enqueue(std::make_pair(1,400)); 
+   // for(int i = 0; i < 50; i++) {
+   //     std::pair<int, int> read_in;
+   //     bool success = pair_queue.try_dequeue(read_in);
+   //     if(success) {
+   //         cout << "read data: <IP, DATA> : <" << read_in.first << ", " << read_in.second << ">" << endl;
+   //     }
+   //     else {
+   //         cout << "could not read in data " << i << endl;
+   //     }
+
+   // }
+    // boost_queue
+    for(int i =0 ; i < 10; i++) {
+        std::pair<std::string, boost::array<uint32_t, 65507> > read_in;
+        bool success = boost_queue.try_dequeue(read_in);
         if(success) {
-            cout << "read data: <IP, DATA> : <" << read_in.first << ", " << read_in.second << ">" << endl;
+            std::string ip_ = read_in.first;
+            stringstream input;
+            for(auto x : read_in.second) { 
+                if(x==4321) break;
+                input << x << "  ";
+            }
+            cout << "IP: " << ip_ << "  >> " << input.str() << endl;
         }
         else {
             cout << "could not read in data " << i << endl;
         }
-
     }
-*/
-
+/*
     cout << "main thread : " << boost::this_thread::get_id() << endl;
     if(udpsocket->is_open()) {
         cout << "socket open" << endl;
@@ -163,6 +191,7 @@ int main()
     //listener.join();
     //group.join_all();
     //cout << "join_all" << endl;
+*/
 /*
     std::thread reader([&]() {
         int item;
