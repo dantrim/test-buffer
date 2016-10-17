@@ -10,6 +10,7 @@
 #include <boost/array.hpp>
 
 
+
 boost::array<uint32_t, 65507> data_buffer;
 boost::asio::ip::udp::endpoint endpoint;
 boost::shared_ptr<int> n_packet = boost::shared_ptr<int>(new int(0));
@@ -53,8 +54,8 @@ void read_data()
                 if(q->wait_dequeue_timed(item, std::chrono::milliseconds(1))) {
                 //if(q->wait_dequeue_timed(item, std::chrono::milliseconds(5))) {
                     //q.wait_dequeue(item);
-                if(item%10000==0)
-                cout << "[" << boost::this_thread::get_id() << "] read_data : " << item << endl;
+                //if(item%10000==0)
+                //cout << "[" << boost::this_thread::get_id() << "] read_data : " << item << endl;
                 }
             }
             //else if(item==30000) { break; }
@@ -80,9 +81,10 @@ void handle_data(boost::shared_ptr<boost::asio::ip::udp::socket> socket)
 void receive_data(boost::shared_ptr<boost::asio::ip::udp::socket> socket)
 {
     q->enqueue(data_buffer.at(0));
-    //if((*n_packet)%10000==0)
-    //cout << "[" << boost::this_thread::get_id() << "] receive_data : " << data_buffer.at(0) << endl;
     (*n_packet)++;
+    int check = (*n_packet);
+    if(check%10000==0 && check<=63040) 
+    cout << "[" << boost::this_thread::get_id() << "] receive_data : " << data_buffer.at(0) << endl;
     if((*n_packet)>=63040) {
         return;
         
@@ -97,6 +99,26 @@ void receive_data(boost::shared_ptr<boost::asio::ip::udp::socket> socket)
 }
 int main()
 {
+/*
+    BlockingReaderWriterQueue<std::map<int, int> > mapping_queue(100);
+    BlockingReaderWriterQueue<std::pair<int, int> > pair_queue(100);
+
+    for(int i = 0; i < 50; i++)
+        pair_queue.enqueue(std::make_pair(i, 2*i));
+    //pair_queue.enqueue(std::make_pair(1,400)); 
+    for(int i = 0; i < 50; i++) {
+        std::pair<int, int> read_in;
+        bool success = pair_queue.try_dequeue(read_in);
+        if(success) {
+            cout << "read data: <IP, DATA> : <" << read_in.first << ", " << read_in.second << ">" << endl;
+        }
+        else {
+            cout << "could not read in data " << i << endl;
+        }
+
+    }
+*/
+
     cout << "main thread : " << boost::this_thread::get_id() << endl;
     if(udpsocket->is_open()) {
         cout << "socket open" << endl;
@@ -191,5 +213,6 @@ int main()
     
     assert(q->size_approx() == 0);
 */
+
     return 0;
 }
