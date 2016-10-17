@@ -84,11 +84,12 @@ void receive_data(boost::shared_ptr<boost::asio::ip::udp::socket> socket)
     //cout << "[" << boost::this_thread::get_id() << "] receive_data : " << data_buffer.at(0) << endl;
     (*n_packet)++;
     if((*n_packet)>=63040) {
+        return;
         
-        cout << "[" << boost::this_thread::get_id() << "]  shutting down" << endl;
-        service->stop();
-        shut_down_socket();
-        service->reset();
+        //cout << "[" << boost::this_thread::get_id() << "]  shutting down" << endl;
+        //service->stop();
+        //shut_down_socket();
+        //service->reset();
     }
     else {
     handle_data(socket);
@@ -106,17 +107,24 @@ int main()
     for(int i = 0; i < 2; i++) {
         group.create_thread(boost::bind(&WorkerThread5, service)); 
     }
-    //boost::thread worker1(boost::bind(&boost::asio::io_service::run, service));
-    //boost::thread listener(boost::bind(&handle_data, udpsocket));
     service->post(boost::bind(&handle_data, udpsocket));
     service->post(boost::bind(&read_data));
+
+    //boost::thread listener(boost::bind(&handle_data, udpsocket));
+    //boost::thread reader(boost::bind(&read_data));
+    //service->run();
+
     //boost::thread listener(boost::bind(&read_data));
     //service->run();
 
     cout << "hello world" << endl;
     while(!service->stopped()) {
         if((*n_packet>=63040)) {
+            //reader.join();
+            //listener.join();
             service->stop();
+            shut_down_socket();
+            group.join_all();
             //shut_down_socket();
             cout << "shutting down socket at " << (*n_packet) << " events" << endl;
             //cout << (*n_packet) << endl;
@@ -131,8 +139,8 @@ int main()
     //reader.join();
 
     //listener.join();
-    group.join_all();
-    cout << "join_all" << endl;
+    //group.join_all();
+    //cout << "join_all" << endl;
 /*
     std::thread reader([&]() {
         int item;
