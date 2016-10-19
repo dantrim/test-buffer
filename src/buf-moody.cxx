@@ -10,9 +10,11 @@
 #include <boost/array.hpp>
 
 
+int n_count = 0;
 
-
-boost::array<uint32_t, 65507> data_buffer;
+#define UDP_LEN 600
+#define MC_CAPACITY 1023
+boost::array<uint32_t, UDP_LEN> data_buffer;
 boost::asio::ip::udp::endpoint endpoint;
 boost::shared_ptr<int> n_packet = boost::shared_ptr<int>(new int(0));
 
@@ -28,9 +30,10 @@ using namespace std;
 #include <sstream>
 
 using namespace moodycamel;
-boost::shared_ptr<BlockingReaderWriterQueue<int> > q = boost::shared_ptr<BlockingReaderWriterQueue<int> >(new BlockingReaderWriterQueue<int>());
+boost::shared_ptr<BlockingReaderWriterQueue<boost::array<uint32_t, UDP_LEN> > > q = boost::shared_ptr<BlockingReaderWriterQueue< boost::array<uint32_t, UDP_LEN > > >(new BlockingReaderWriterQueue< boost::array<uint32_t, UDP_LEN> >(MC_CAPACITY));
+//boost::shared_ptr<BlockingReaderWriterQueue<int> > q = boost::shared_ptr<BlockingReaderWriterQueue<int> >(new BlockingReaderWriterQueue<int>());
 
-void receive_data(boost::shared_ptr<boost::asio::ip::udp::socket> socket);
+void receive_data(boost::shared_ptr<boost::asio::ip::udp::socket> socket, int& count);
 void handle_data(boost::shared_ptr<boost::asio::ip::udp::socket> socket);
 
 //BlockingReaderWriterQueue<int> q;
@@ -45,15 +48,27 @@ void WorkerThread5(boost::shared_ptr<boost::asio::io_service> service)
 
 void read_data()
 {
-    int item = -1;
-    while(!service->stopped()){// && !(*n_packet>=63040)) {
+    //int item = -1;
+    boost::array<uint32_t, UDP_LEN> incoming_data;
+    while(!service->stopped()){// && !(*n_packet>=35000)) {
         //while(q->peek()) {
         //if(q->peek()) {
         //if(q->try_dequeue(item))
             if(q->peek()) {
                 //q->wait_dequeue(item);
                 //boost::this_thread::sleep(boost::posix_time::milliseconds(100));
-                if(q->wait_dequeue_timed(item, std::chrono::milliseconds(1))) {
+                if(q->try_dequeue(incoming_data)) {
+                //if(q->wait_dequeue_timed(incoming_data, std::chrono::milliseconds(1))) {
+                int first = incoming_data.at(0);
+                for(auto& x : incoming_data) {
+                    if(x==4321) {
+                        (*n_packet)++;
+                        //n_count++;
+                        cout << "d" << endl;
+                        //cout << "[" << boost::this_thread::get_id() << "] read : " << first << endl;
+                    }
+                }
+                //cout << "[" << boost::this_thread::get_id() << "] read : " << 
                 //if(q->wait_dequeue_timed(item, std::chrono::milliseconds(5))) {
                     //q.wait_dequeue(item);
                 //if(item%10000==0)
@@ -77,23 +92,37 @@ void handle_data(boost::shared_ptr<boost::asio::ip::udp::socket> socket)
 {
     socket->async_receive_from(
         boost::asio::buffer(data_buffer), endpoint,
-        boost::bind(receive_data, socket));
+        boost::bind(receive_data, socket, boost::ref(*n_packet)));
+}
+void look_its_data(boost::array<uint32_t, 65507>& data_buffer)
+{
+    auto first = data_buffer.at(0);
+    for(auto& x : data_buffer) {
+        if(x==4321) {
+            cout << "[" << boost::this_thread::get_id() << "] look : " << first << endl;
+        }
+    }
+    //boost::this_thread::sleep(boost::posix_time::milliseconds(1));
 }
 
-void receive_data(boost::shared_ptr<boost::asio::ip::udp::socket> socket)
+void receive_data(boost::shared_ptr<boost::asio::ip::udp::socket> socket, int& count)
 {
-    q->enqueue(data_buffer.at(0));
-    (*n_packet)++;
-    int check = (*n_packet);
-    if(check%10000==0 && check<=63040) 
-    cout << "[" << boost::this_thread::get_id() << "] receive_data : " << data_buffer.at(0) << endl;
-    if((*n_packet)>=63040) {
+    //look_its_data(data_buffer);
+    //handle_data(socket);
+    q->enqueue(data_buffer);
+    //(count)++;
+    //int check = (*n_packet);
+    //if(check%10000==0 && check<=35000) 
+    //cout << "[" << boost::this_thread::get_id() << "] receive_data : " << data_buffer.at(0) << endl;
+    //if((*n_packet)>=35000) {
+    if((count)>=35000) {
+        shut_down_socket();
         return;
-        
-        //cout << "[" << boost::this_thread::get_id() << "]  shutting down" << endl;
-        //service->stop();
-        //shut_down_socket();
-        //service->reset();
+      
+      //cout << "[" << boost::this_thread::get_id() << "]  shutting down" << endl;
+      //service->stop();
+      //shut_down_socket();
+      //service->reset();
     }
     else {
     handle_data(socket);
@@ -101,6 +130,16 @@ void receive_data(boost::shared_ptr<boost::asio::ip::udp::socket> socket)
 }
 int main()
 {
+
+/*
+    typedef std::pair<std::string, int> test_array;
+
+    int test_x = 48;
+    std::string ip_test = "4.3.2.1";
+    test_array yep = std::make_pair(ip_test, test_x);
+    cout << "test yep ip: " << yep.first << ", second: " << yep.second << endl;
+    return 0;
+
     BlockingReaderWriterQueue<std::map<int, int> > mapping_queue(100);
     BlockingReaderWriterQueue<std::pair<int, int> > pair_queue(100);
     BlockingReaderWriterQueue<std::pair<std::string, boost::array<uint32_t, 65507> > > boost_queue(20);
@@ -146,7 +185,7 @@ int main()
             cout << "could not read in data " << i << endl;
         }
     }
-/*
+*/
     cout << "main thread : " << boost::this_thread::get_id() << endl;
     if(udpsocket->is_open()) {
         cout << "socket open" << endl;
@@ -169,14 +208,15 @@ int main()
 
     cout << "hello world" << endl;
     while(!service->stopped()) {
-        if((*n_packet>=63040)) {
+        if((*n_packet>=35000)) {
             //reader.join();
             //listener.join();
+            //shut_down_socket();
             service->stop();
-            shut_down_socket();
             group.join_all();
             //shut_down_socket();
             cout << "shutting down socket at " << (*n_packet) << " events" << endl;
+            cout << "n_count = " << n_count << endl;
             //cout << (*n_packet) << endl;
         }
     }
@@ -191,7 +231,6 @@ int main()
     //listener.join();
     //group.join_all();
     //cout << "join_all" << endl;
-*/
 /*
     std::thread reader([&]() {
         int item;
